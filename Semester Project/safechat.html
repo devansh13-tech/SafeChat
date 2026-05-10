@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SafeChat</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="safechat.css" />
+</head>
+
+<body>
+
+    <!-- SETUP -->
+    <div id="setupScreen">
+        <div class="setup-card">
+            <div class="card-header">
+                <div class="brand">
+                    <div class="hero-logo">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            <rect x="9" y="11" width="6" height="4" rx="1" fill="#fff" />
+                            <path d="M10 11V9a2 2 0 0 1 4 0v2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="brand-name">SafeChat</div>
+                        <div class="brand-tagline">Private · Encrypted · Real-time</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="setup-alert" id="setupAlert"></div>
+                <div class="field"><label>Display Name</label><input id="setupName" type="text"
+                        placeholder="e.g. Alice, Bob…" /></div>
+                <div class="field">
+                    <label>Your Role</label>
+                    <div class="role-row">
+                        <div class="role-pill"><input type="radio" name="r" id="rS" value="sender" checked /><label
+                                for="rS">✉️ Sender</label></div>
+                        <div class="role-pill"><input type="radio" name="r" id="rR" value="receiver" /><label
+                                for="rR">📥 Receiver</label></div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Room Code <span style="color:#4a5568;font-weight:400;text-transform:none;">(share to
+                            connect)</span></label>
+                    <div class="room-row"><input id="setupRoom" type="text" placeholder="NOVA-482" /><button
+                            class="rand-btn" onclick="genRoom()">🎲 Random</button></div>
+                </div>
+                <button class="connect-btn" id="connectBtn" onclick="connectToRoom()">Connect to Room →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAT APP -->
+    <div id="chatApp">
+
+        <!-- LEFT PANEL -->
+        <div class="wa-left">
+            <div class="wa-me-strip">
+                <div class="wa-me-av" id="meAv"></div>
+                <div>
+                    <div class="wa-me-name" id="meName"></div>
+                    <div class="wa-me-role" id="meRole"></div>
+                </div>
+                <button class="wa-leave-btn" onclick="handleLogout()">Leave</button>
+            </div>
+            <div class="wa-left-header">
+                <div class="wa-left-title">Chats</div>
+                <div><button class="wa-icon-btn" title="Info" onclick="showEncInfo()">🔒</button></div>
+            </div>
+            <div class="wa-search">
+                <div class="wa-search-inner">
+                    <svg width="16" height="16" fill="#8696a0" viewBox="0 0 16 16">
+                        <path
+                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z" />
+                    </svg>
+                    <input type="text" placeholder="Search or start new chat" />
+                </div>
+            </div>
+            <div class="wa-chat-list" id="waChatList">
+                <div class="wa-waiting-item">
+                    <div class="wa-pulse">📡</div>
+                    <div class="wa-waiting-title">No active chats</div>
+                    <div>Share the room code below to connect with someone</div>
+                </div>
+            </div>
+            <div class="wa-room-banner">
+                <div class="wa-room-label">Your Room Code</div>
+                <div class="wa-room-row">
+                    <div class="wa-room-code" id="leftRoomCode"></div>
+                    <button class="wa-copy-btn" id="copyBtnLeft" onclick="copyRoom()">📋 Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="wa-right">
+            <div class="wa-wait-overlay" id="waitOverlay">
+                <div class="wa-wait-card">
+                    <div class="wa-wait-icon">🔐</div>
+                    <div class="wa-wait-title">Waiting for peer</div>
+                    <div class="wa-wait-sub">Share this room code with the other person. You both need to open SafeChat
+                        and enter the same code.</div>
+                    <div class="wa-code-box" id="roomDisplay"></div>
+                    <button class="wa-copy-code-btn" id="copyBtnOverlay" onclick="copyRoom()">📋 Copy Room Code</button>
+                </div>
+            </div>
+
+            <div class="wa-chat-header">
+                <div class="wa-chat-peer-av" id="chAv" style="background:#2a3942;">👤</div>
+                <div>
+                    <div class="wa-chat-peer-name" id="chName">Waiting for peer…</div>
+                    <div class="wa-chat-peer-status" id="chStatus">Share the room code to connect</div>
+                </div>
+                <div class="wa-hdr-actions">
+                    <button class="wa-icon-btn">🔒</button>
+                    <button class="wa-icon-btn">⋮</button>
+                </div>
+            </div>
+
+            <div class="wa-enc-banner">
+                🔒 Messages and calls are <span>end-to-end encrypted</span> with AES-256-GCM. No one outside this room
+                can read them.
+            </div>
+
+            <div class="wa-msgs" id="msgs">
+                <div class="wa-date-line">Today</div>
+                <div class="wa-sys-pill">🔒 Room joined. Waiting for the other person to connect…</div>
+            </div>
+
+            <div class="wa-typing-row" id="typingRow">
+                <div class="wa-typing-bubble">
+                    <div class="wa-td"></div>
+                    <div class="wa-td"></div>
+                    <div class="wa-td"></div>
+                </div>
+                <div class="wa-typing-who" id="typingWho">typing…</div>
+            </div>
+
+            <div class="wa-emoji-tray" id="emojiTray">
+                <span onclick="ins('😊')">😊</span><span onclick="ins('👍')">👍</span>
+                <span onclick="ins('❤️')">❤️</span><span onclick="ins('😂')">😂</span>
+                <span onclick="ins('🙏')">🙏</span><span onclick="ins('🔥')">🔥</span>
+                <span onclick="ins('🚀')">🚀</span><span onclick="ins('✅')">✅</span>
+                <span onclick="ins('😎')">😎</span><span onclick="ins('🤝')">🤝</span>
+                <span onclick="ins('🎉')">🎉</span><span onclick="ins('💡')">💡</span>
+            </div>
+
+            <div class="wa-input-bar">
+                <button class="wa-input-side-btn" onclick="toggleEmoji()" title="Emoji">😊</button>
+                <div class="wa-input-wrap">
+                    <button class="wa-attach-btn" onclick="chooseAttachment()" title="Attach">📎</button>
+                    <textarea class="wa-msg-input" id="chatInput" placeholder="Type a message" rows="1" disabled
+                        onkeydown="kd(event)" oninput="ri(this);ht();"></textarea>
+                    <button class="wa-mic-btn" id="recordBtn" onclick="toggleRecording()" title="Voice note">🎤</button>
+                </div>
+                <input type="file" id="fileInput" style="display:none" accept="image/*,audio/*,.pdf,.doc,.docx,.txt" />
+                <button class="wa-send-btn" id="sendBtn" onclick="send()" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="safechat.js"></script>
+</body>
+
+</html>
