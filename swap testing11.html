@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeChat</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      background: #111b21;
+    }
+
+    /* ── SETUP SCREEN ── */
+    #setupScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #111b21;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .setup-card {
+      width: 100%;
+      max-width: 420px;
+      background: #202c33;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+      overflow: hidden;
+      animation: cardIn .4s cubic-bezier(.16, 1, .3, 1);
+    }
+
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(24px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .card-header {
+      background: #00a884;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-header::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .card-header::after {
+      content: '';
+      position: absolute;
+      bottom: -60px;
+      left: -30px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .05);
+    }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero-logo {
+      width: 76px;
+      height: 76px;
+      background: rgba(255, 255, 255, .2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(255, 255, 255, .4);
+    }
+
+    .brand-name {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.3px;
+    }
+
+    .brand-tagline {
+      font-size: 13px;
+      color: rgba(255, 255, 255, .85);
+      font-weight: 400;
+    }
+
+    .card-body {
+      padding: 28px 32px 32px;
+    }
+
+    .setup-alert {
+      background: rgba(220, 38, 38, .15);
+      border: 1px solid rgba(220, 38, 38, .4);
+      color: #f87171;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .setup-alert.show {
+      display: block;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #8696a0;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 16px;
+      background: #2a3942;
+      border: 1.5px solid #3b4a54;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: #e9edef;
+      outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+
+    .field input:focus {
+      border-color: #00a884;
+      box-shadow: 0 0 0 3px rgba(0, 168, 132, .15);
+    }
+
+    .field input::placeholder {
+      color: #4a5568;
+    }
+
+    .room-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .room-row input {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #00a884;
+      letter-spacing: 1.5px;
+    }
+
+    .rand-btn {
+      padding: 12px 14px;
+      border-radius: 10px;
+      white-space: nowrap;
+      background: #2a3942;
+      border: 1.5px solid #3b4a54;
+      color: #8696a0;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .rand-btn:hover {
+      border-color: #00a884;
+      color: #00a884;
+    }
+
+    .role-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .role-pill {
+      flex: 1;
+    }
+
+    .role-pill input {
+      display: none;
+    }
+
+    .role-pill label {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 0;
+      border-radius: 10px;
+      background: #2a3942;
+      border: 1.5px solid #3b4a54;
+      font-size: 13px;
+      font-weight: 500;
+      color: #8696a0;
+      cursor: pointer;
+      transition: all .18s;
+    }
+
+    .role-pill input:checked+label {
+      background: rgba(0, 168, 132, .15);
+      border-color: #00a884;
+      color: #00a884;
+      font-weight: 600;
+    }
+
+    .connect-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px;
+      background: #00a884;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      box-shadow: 0 4px 18px rgba(0, 168, 132, .3);
+    }
+
+    .connect-btn:hover:not(:disabled) {
+      background: #00c79a;
+      transform: translateY(-1px);
+    }
+
+    .connect-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── CHAT APP ── */
+    #chatApp {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      flex-direction: row;
+    }
+
+    /* ── LEFT PANEL ── */
+    .wa-left {
+      width: 380px;
+      flex-shrink: 0;
+      background: #111b21;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #222d34;
+    }
+
+    .wa-me-strip {
+      background: #202c33;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .wa-me-av {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .wa-me-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e9edef;
+    }
+
+    .wa-me-role {
+      font-size: 11px;
+      color: #8696a0;
+    }
+
+    .wa-leave-btn {
+      margin-left: auto;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid #3b4a54;
+      color: #8696a0;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .wa-leave-btn:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    .wa-left-header {
+      background: #202c33;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      border-top: 1px solid #2a3942;
+    }
+
+    .wa-left-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e9edef;
+    }
+
+    .wa-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: #aebac1;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s;
+    }
+
+    .wa-icon-btn:hover {
+      background: #2a3942;
+    }
+
+    .wa-search {
+      padding: 8px 12px;
+      background: #111b21;
+      flex-shrink: 0;
+    }
+
+    .wa-search-inner {
+      display: flex;
+      align-items: center;
+      background: #202c33;
+      border-radius: 8px;
+      padding: 8px 12px;
+      gap: 8px;
+    }
+
+    .wa-search-inner svg {
+      flex-shrink: 0;
+    }
+
+    .wa-search-inner input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: #e9edef;
+    }
+
+    .wa-search-inner input::placeholder {
+      color: #4a5568;
+    }
+
+    .wa-chat-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .wa-chat-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .wa-chat-list::-webkit-scrollbar-thumb {
+      background: #2a3942;
+      border-radius: 2px;
+    }
+
+    /* Chat list item */
+    .wa-chat-item {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #1f2c34;
+      transition: background .15s;
+      position: relative;
+    }
+
+    .wa-chat-item:hover {
+      background: #202c33;
+    }
+
+    .wa-chat-item.active {
+      background: #2a3942;
+    }
+
+    .wa-chat-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      position: relative;
+    }
+
+    .wa-avatar-online {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #00a884;
+      border: 2px solid #111b21;
+    }
+
+    .wa-chat-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .wa-chat-name-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .wa-chat-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e9edef;
+    }
+
+    .wa-chat-time {
+      font-size: 11.5px;
+      color: #8696a0;
+      white-space: nowrap;
+    }
+
+    .wa-chat-preview-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .wa-chat-preview {
+      font-size: 13px;
+      color: #8696a0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+    }
+
+    .wa-waiting-item {
+      padding: 28px 16px;
+      text-align: center;
+      color: #8696a0;
+      font-size: 13px;
+    }
+
+    .wa-pulse {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: #202c33;
+      margin: 0 auto 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    .wa-waiting-title {
+      color: #e9edef;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    /* Room code banner */
+    .wa-room-banner {
+      background: #202c33;
+      padding: 12px 16px;
+      border-top: 1px solid #2a3942;
+      flex-shrink: 0;
+    }
+
+    .wa-room-label {
+      font-size: 10px;
+      color: #8696a0;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .wa-room-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wa-room-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: #00a884;
+      letter-spacing: 1px;
+      flex: 1;
+    }
+
+    .wa-copy-btn {
+      padding: 5px 12px;
+      border-radius: 8px;
+      background: #2a3942;
+      border: 1px solid #3b4a54;
+      color: #8696a0;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .wa-copy-btn:hover {
+      border-color: #00a884;
+      color: #00a884;
+    }
+
+    /* ── RIGHT PANEL ── */
+    .wa-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #0b141a;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wa-right::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: .04;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2300a884' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    .wa-chat-header {
+      background: #202c33;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 2;
+      position: relative;
+    }
+
+    .wa-chat-peer-av {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .wa-chat-peer-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e9edef;
+    }
+
+    .wa-chat-peer-status {
+      font-size: 12px;
+      color: #8696a0;
+      margin-top: 1px;
+    }
+
+    .wa-chat-peer-status.online {
+      color: #00a884;
+    }
+
+    .wa-hdr-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+    }
+
+    .wa-enc-banner {
+      background: rgba(0, 168, 132, .07);
+      border: 1px solid rgba(0, 168, 132, .15);
+      margin: 10px 50px;
+      border-radius: 10px;
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 11.5px;
+      color: #8696a0;
+      flex-shrink: 0;
+      z-index: 1;
+      position: relative;
+    }
+
+    .wa-enc-banner span {
+      color: #00a884;
+    }
+
+    .wa-msgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 50px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .wa-msgs::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .wa-msgs::-webkit-scrollbar-thumb {
+      background: #2a3942;
+      border-radius: 3px;
+    }
+
+    .wa-date-line {
+      align-self: center;
+      background: #182229;
+      color: #8696a0;
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 4px 14px;
+      border-radius: 8px;
+      margin: 8px 0;
+    }
+
+    .wa-sys-pill {
+      align-self: center;
+      background: #182229;
+      color: #8696a0;
+      font-size: 12px;
+      padding: 7px 18px;
+      border-radius: 8px;
+      margin: 4px 0;
+      text-align: center;
+      max-width: 340px;
+      line-height: 1.55;
+    }
+
+    .wa-msg-row {
+      display: flex;
+      margin: 2px 0;
+    }
+
+    .wa-msg-row.me {
+      justify-content: flex-end;
+    }
+
+    .wa-msg-row.you {
+      justify-content: flex-start;
+    }
+
+    .wa-bubble {
+      max-width: 65%;
+      padding: 7px 12px 6px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.55;
+      word-break: break-word;
+      position: relative;
+      animation: popIn .2s ease-out;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(.95)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .wa-msg-row.me .wa-bubble {
+      background: #005c4b;
+      color: #e9edef;
+      border-top-right-radius: 0;
+    }
+
+    .wa-msg-row.you .wa-bubble {
+      background: #202c33;
+      color: #e9edef;
+      border-top-left-radius: 0;
+    }
+
+    /* Tails */
+    .wa-msg-row.me .wa-bubble::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+      border-top-color: #005c4b;
+      border-right: 0;
+      border-left: 8px solid #005c4b;
+    }
+
+    .wa-msg-row.you .wa-bubble::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -8px;
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+      border-top-color: #202c33;
+      border-left: 0;
+      border-right: 8px solid #202c33;
+    }
+
+    .wa-bubble-meta {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-top: 3px;
+      font-size: 11px;
+      color: rgba(233, 237, 239, .5);
+    }
+
+    .wa-tick-blue {
+      color: #53bdeb;
+    }
+
+    .wa-msg-img {
+      max-width: 260px;
+      border-radius: 6px;
+      display: block;
+    }
+
+    .wa-msg-audio {
+      width: 220px;
+      margin-top: 4px;
+    }
+
+    .wa-msg-file {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, .06);
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: #e9edef;
+      font-size: 13px;
+    }
+
+    .wa-msg-file:hover {
+      background: rgba(255, 255, 255, .1);
+    }
+
+    .wa-typing-row {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 50px 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .wa-typing-row.show {
+      display: flex;
+    }
+
+    .wa-typing-bubble {
+      background: #202c33;
+      border-radius: 8px;
+      border-top-left-radius: 0;
+      padding: 10px 14px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .wa-td {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #8696a0;
+      animation: tdUp 1.2s ease-in-out infinite;
+    }
+
+    .wa-td:nth-child(2) {
+      animation-delay: .2s
+    }
+
+    .wa-td:nth-child(3) {
+      animation-delay: .4s
+    }
+
+    @keyframes tdUp {
+
+      0%,
+      60%,
+      100% {
+        transform: translateY(0)
+      }
+
+      30% {
+        transform: translateY(-5px)
+      }
+    }
+
+    .wa-typing-who {
+      font-size: 12px;
+      color: #8696a0;
+    }
+
+    .wa-emoji-tray {
+      position: absolute;
+      bottom: 72px;
+      left: 50px;
+      background: #202c33;
+      border: 1px solid #2a3942;
+      border-radius: 14px;
+      padding: 10px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-width: 240px;
+      z-index: 30;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+    }
+
+    .wa-emoji-tray.open {
+      display: flex;
+    }
+
+    .wa-emoji-tray span {
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 8px;
+      transition: background .15s;
+    }
+
+    .wa-emoji-tray span:hover {
+      background: #2a3942;
+    }
+
+    .wa-input-bar {
+      padding: 10px 16px;
+      background: #202c33;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 2;
+      position: relative;
+    }
+
+    .wa-input-side-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: #aebac1;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color .15s;
+    }
+
+    .wa-input-side-btn:hover {
+      color: #00a884;
+    }
+
+    .wa-input-wrap {
+      flex: 1;
+      background: #2a3942;
+      border-radius: 22px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .wa-attach-btn {
+      background: transparent;
+      border: none;
+      color: #aebac1;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 4px;
+      transition: color .15s;
+      flex-shrink: 0;
+    }
+
+    .wa-attach-btn:hover {
+      color: #00a884;
+    }
+
+    .wa-mic-btn {
+      background: transparent;
+      border: none;
+      color: #aebac1;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 4px;
+      transition: color .15s;
+      flex-shrink: 0;
+    }
+
+    .wa-mic-btn:hover {
+      color: #00a884;
+    }
+
+    .wa-msg-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      color: #e9edef;
+      resize: none;
+      min-height: 28px;
+      max-height: 100px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .wa-msg-input::placeholder {
+      color: #4a5568;
+    }
+
+    .wa-msg-input:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .wa-send-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #00a884;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      box-shadow: 0 2px 8px rgba(0, 168, 132, .3);
+    }
+
+    .wa-send-btn:hover:not(:disabled) {
+      background: #00c79a;
+      transform: scale(1.07);
+    }
+
+    .wa-send-btn:disabled {
+      background: #2a3942;
+      color: #4a5568;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Wait overlay */
+    .wa-wait-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(11, 20, 26, .93);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .wa-wait-card {
+      background: #202c33;
+      border-radius: 20px;
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+    }
+
+    .wa-wait-icon {
+      font-size: 56px;
+      margin-bottom: 18px;
+      animation: wFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes wFloat {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-10px)
+      }
+    }
+
+    .wa-wait-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e9edef;
+      margin-bottom: 8px;
+    }
+
+    .wa-wait-sub {
+      font-size: 13px;
+      color: #8696a0;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .wa-code-box {
+      background: #2a3942;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      color: #00a884;
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+    }
+
+    .wa-copy-code-btn {
+      padding: 11px 28px;
+      border-radius: 10px;
+      background: #00a884;
+      border: none;
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .wa-copy-code-btn:hover {
+      background: #00c79a;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    @media(max-width:700px) {
+      .wa-left {
+        width: 100%;
+      }
+
+      .wa-right {
+        display: none;
+      }
+
+      #chatApp.chat-open .wa-left {
+        display: none;
+      }
+
+      #chatApp.chat-open .wa-right {
+        display: flex;
+        width: 100%;
+      }
+
+      .wa-msgs {
+        padding: 10px 12px;
+      }
+
+      .wa-enc-banner {
+        margin: 10px 12px;
+      }
+
+      .wa-typing-row {
+        padding: 4px 12px 8px;
+      }
+
+      .wa-emoji-tray {
+        left: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SETUP -->
+  <div id="setupScreen">
+    <div class="setup-card">
+      <div class="card-header">
+        <div class="brand">
+          <div class="hero-logo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <rect x="9" y="11" width="6" height="4" rx="1" fill="#fff" />
+              <path d="M10 11V9a2 2 0 0 1 4 0v2" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">SafeChat</div>
+            <div class="brand-tagline">Private · Encrypted · Real-time</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="setup-alert" id="setupAlert"></div>
+        <div class="field"><label>Display Name</label><input id="setupName" type="text"
+            placeholder="e.g. Alice, Bob…" /></div>
+        <div class="field">
+          <label>Your Role</label>
+          <div class="role-row">
+            <div class="role-pill"><input type="radio" name="r" id="rS" value="sender" checked /><label for="rS">✉️
+                Sender</label></div>
+            <div class="role-pill"><input type="radio" name="r" id="rR" value="receiver" /><label for="rR">📥
+                Receiver</label></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Room Code <span style="color:#4a5568;font-weight:400;text-transform:none;">(share to
+              connect)</span></label>
+          <div class="room-row"><input id="setupRoom" type="text" placeholder="NOVA-482" /><button class="rand-btn"
+              onclick="genRoom()">🎲 Random</button></div>
+        </div>
+        <button class="connect-btn" id="connectBtn" onclick="connectToRoom()">Connect to Room →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT APP -->
+  <div id="chatApp">
+
+    <!-- LEFT PANEL -->
+    <div class="wa-left">
+      <div class="wa-me-strip">
+        <div class="wa-me-av" id="meAv"></div>
+        <div>
+          <div class="wa-me-name" id="meName"></div>
+          <div class="wa-me-role" id="meRole"></div>
+        </div>
+        <button class="wa-leave-btn" onclick="handleLogout()">Leave</button>
+      </div>
+      <div class="wa-left-header">
+        <div class="wa-left-title">Chats</div>
+        <div><button class="wa-icon-btn" title="Info" onclick="showEncInfo()">🔒</button></div>
+      </div>
+      <div class="wa-search">
+        <div class="wa-search-inner">
+          <svg width="16" height="16" fill="#8696a0" viewBox="0 0 16 16">
+            <path
+              d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z" />
+          </svg>
+          <input type="text" placeholder="Search or start new chat" />
+        </div>
+      </div>
+      <div class="wa-chat-list" id="waChatList">
+        <div class="wa-waiting-item">
+          <div class="wa-pulse">📡</div>
+          <div class="wa-waiting-title">No active chats</div>
+          <div>Share the room code below to connect with someone</div>
+        </div>
+      </div>
+      <div class="wa-room-banner">
+        <div class="wa-room-label">Your Room Code</div>
+        <div class="wa-room-row">
+          <div class="wa-room-code" id="leftRoomCode"></div>
+          <button class="wa-copy-btn" id="copyBtnLeft" onclick="copyRoom()">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="wa-right">
+      <div class="wa-wait-overlay" id="waitOverlay">
+        <div class="wa-wait-card">
+          <div class="wa-wait-icon">🔐</div>
+          <div class="wa-wait-title">Waiting for peer</div>
+          <div class="wa-wait-sub">Share this room code with the other person. You both need to open SafeChat and enter
+            the same code.</div>
+          <div class="wa-code-box" id="roomDisplay"></div>
+          <button class="wa-copy-code-btn" id="copyBtnOverlay" onclick="copyRoom()">📋 Copy Room Code</button>
+        </div>
+      </div>
+
+      <div class="wa-chat-header">
+        <div class="wa-chat-peer-av" id="chAv" style="background:#2a3942;">👤</div>
+        <div>
+          <div class="wa-chat-peer-name" id="chName">Waiting for peer…</div>
+          <div class="wa-chat-peer-status" id="chStatus">Share the room code to connect</div>
+        </div>
+        <div class="wa-hdr-actions">
+          <button class="wa-icon-btn">🔒</button>
+          <button class="wa-icon-btn">⋮</button>
+        </div>
+      </div>
+
+      <div class="wa-enc-banner">
+        🔒 Messages and calls are <span>end-to-end encrypted</span> with AES-256-GCM. No one outside this room can read
+        them.
+      </div>
+
+      <div class="wa-msgs" id="msgs">
+        <div class="wa-date-line">Today</div>
+        <div class="wa-sys-pill">🔒 Room joined. Waiting for the other person to connect…</div>
+      </div>
+
+      <div class="wa-typing-row" id="typingRow">
+        <div class="wa-typing-bubble">
+          <div class="wa-td"></div>
+          <div class="wa-td"></div>
+          <div class="wa-td"></div>
+        </div>
+        <div class="wa-typing-who" id="typingWho">typing…</div>
+      </div>
+
+      <div class="wa-emoji-tray" id="emojiTray">
+        <span onclick="ins('😊')">😊</span><span onclick="ins('👍')">👍</span>
+        <span onclick="ins('❤️')">❤️</span><span onclick="ins('😂')">😂</span>
+        <span onclick="ins('🙏')">🙏</span><span onclick="ins('🔥')">🔥</span>
+        <span onclick="ins('🚀')">🚀</span><span onclick="ins('✅')">✅</span>
+        <span onclick="ins('😎')">😎</span><span onclick="ins('🤝')">🤝</span>
+        <span onclick="ins('🎉')">🎉</span><span onclick="ins('💡')">💡</span>
+      </div>
+
+      <div class="wa-input-bar">
+        <button class="wa-input-side-btn" onclick="toggleEmoji()" title="Emoji">😊</button>
+        <div class="wa-input-wrap">
+          <button class="wa-attach-btn" onclick="chooseAttachment()" title="Attach">📎</button>
+          <textarea class="wa-msg-input" id="chatInput" placeholder="Type a message" rows="1" disabled
+            onkeydown="kd(event)" oninput="ri(this);ht();"></textarea>
+          <button class="wa-mic-btn" id="recordBtn" onclick="toggleRecording()" title="Voice note">🎤</button>
+        </div>
+        <input type="file" id="fileInput" style="display:none" accept="image/*,audio/*,.pdf,.doc,.docx,.txt" />
+        <button class="wa-send-btn" id="sendBtn" onclick="send()" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCaTadRY8qr4f2vzW9NN0HdcGIXdB7uZjg",
+      authDomain: "safechat-f3c73.firebaseapp.com",
+      databaseURL: "https://safechat-f3c73-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "safechat-f3c73",
+      storageBucket: "safechat-f3c73.firebasestorage.app",
+      messagingSenderId: "651460378440",
+      appId: "1:651460378440:web:74d96f76f37d973848bd7d"
+    };
+
+    let db, roomRef, msgsRef, presRef, typRef;
+    let myId, myName, myRole, myAv, roomCode;
+    let peerOn = false, peerInfo = null, typTimer = null;
+    let seenKeys = new Set();
+    let mediaRecorder = null, audioChunks = [], recording = false;
+    let lastPreview = '', lastMsgTime = '';
+
+    const b2b = b => btoa(String.fromCharCode(...new Uint8Array(b)));
+    const b2buf = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer;
+    const nowStr = () => new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const COLORS = ['#00a884', '#7c3aed', '#2563eb', '#db2777', '#d97706', '#0891b2', '#059669', '#dc2626'];
+    function avatarColor(name) { let h = 0; for (let c of name) h = (h * 31 + c.charCodeAt(0)) % COLORS.length; return COLORS[Math.abs(h)]; }
+
+    function genRoom() {
+      const w = ['NOVA', 'ECHO', 'LYRA', 'DELTA', 'SIGMA', 'AMBER', 'COBALT', 'PIXEL', 'STORM', 'ATLAS'];
+      document.getElementById('setupRoom').value = w[Math.floor(Math.random() * w.length)] + '-' + (Math.floor(Math.random() * 900) + 100);
+    }
+
+    function showErr(msg) { const el = document.getElementById('setupAlert'); el.textContent = msg; el.classList.add('show'); }
+
+    async function connectToRoom() {
+      const name = document.getElementById('setupName').value.trim();
+      const role = document.querySelector('input[name="r"]:checked').value;
+      const room = document.getElementById('setupRoom').value.trim().toUpperCase();
+      if (!name) return showErr('Please enter your display name.');
+      if (!room) return showErr('Please enter or generate a room code.');
+      const btn = document.getElementById('connectBtn');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Connecting…';
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        await db.ref('.info/connected').once('value');
+        myName = name; myRole = role; myAv = name.charAt(0).toUpperCase();
+        myId = 'u_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        roomCode = room;
+        roomRef = db.ref(`safechat/rooms/${roomCode}`);
+        msgsRef = roomRef.child('messages');
+        presRef = roomRef.child('presence').child(myId);
+        typRef = roomRef.child('typing').child(myId);
+        await presRef.set({ name: myName, role: myRole, av: myAv, ts: Date.now() });
+        presRef.onDisconnect().remove();
+        typRef.onDisconnect().remove();
+        launch();
+      } catch (e) {
+        btn.disabled = false; btn.innerHTML = 'Connect to Room →';
+        showErr('Connection failed: ' + e.message);
+        console.error('Firebase error:', e);
+      }
+    }
+
+    function launch() {
+      document.getElementById('setupScreen').style.display = 'none';
+      document.getElementById('chatApp').style.display = 'flex';
+      const col = avatarColor(myName);
+      const meAv = document.getElementById('meAv');
+      meAv.textContent = myAv; meAv.style.background = col;
+      document.getElementById('meName').textContent = myName;
+      document.getElementById('meRole').textContent = myRole.charAt(0).toUpperCase() + myRole.slice(1);
+      document.getElementById('leftRoomCode').textContent = roomCode;
+      document.getElementById('roomDisplay').textContent = roomCode;
+
+      roomRef.child('presence').on('value', s => syncPresence(s.val() || {}));
+
+      msgsRef.on('child_added', async s => {
+        if (!s.val() || seenKeys.has(s.key)) return;
+        seenKeys.add(s.key);
+        const msg = s.val();
+        try {
+          const plain = await decrypt(msg.enc_iv, msg.enc_ct);
+          if (msg.type === 'text') { msg.text = plain; }
+          else { const p = JSON.parse(plain); msg.type = p.type || msg.type; msg.text = p.text || ''; msg.fileName = p.fileName || ''; msg.fileType = p.fileType || ''; msg.dataUrl = p.dataUrl || ''; }
+        } catch (e) { msg.text = '[Unable to decrypt]'; msg.type = 'text'; }
+        renderMsg(msg);
+        // update list preview
+        lastPreview = msg.type === 'text' ? msg.text : msg.type === 'image' ? '📷 Image' : msg.type === 'audio' ? '🎤 Voice note' : '📄 ' + (msg.fileName || 'File');
+        lastMsgTime = msg.time || nowStr();
+        updateListPreview();
+      });
+
+      roomRef.child('typing').on('value', s => {
+        const o = Object.entries(s.val() || {}).filter(([id]) => id !== myId);
+        if (o.length) { document.getElementById('typingWho').textContent = (o[0][1]?.name || 'Peer') + ' is typing…'; document.getElementById('typingRow').classList.add('show'); }
+        else { document.getElementById('typingRow').classList.remove('show'); }
+      });
+    }
+
+    function syncPresence(members) {
+      const list = Object.values(members);
+      const peer = list.find(m => m.name !== myName);
+      const chatList = document.getElementById('waChatList');
+
+      if (peer && !peerOn) {
+        peerOn = true; peerInfo = peer;
+        const col = avatarColor(peer.name);
+        // Header
+        const chAv = document.getElementById('chAv');
+        chAv.textContent = peer.av || peer.name.charAt(0); chAv.style.background = col;
+        document.getElementById('chName').textContent = peer.name;
+        document.getElementById('chStatus').textContent = 'online';
+        document.getElementById('chStatus').className = 'wa-chat-peer-status online';
+        document.getElementById('waitOverlay').style.display = 'none';
+        document.getElementById('chatInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('chatApp').classList.add('chat-open');
+        // Chat list item
+        chatList.innerHTML = `
+        <div class="wa-chat-item active" id="chatListItem">
+          <div class="wa-chat-avatar" style="background:${col};">
+            ${esc(peer.av || peer.name.charAt(0))}
+            <div class="wa-avatar-online" id="listOnlineDot"></div>
+          </div>
+          <div class="wa-chat-info">
+            <div class="wa-chat-name-row">
+              <div class="wa-chat-name">${esc(peer.name)}</div>
+              <div class="wa-chat-time" id="listTime">${nowStr()}</div>
+            </div>
+            <div class="wa-chat-preview-row">
+              <div class="wa-chat-preview" id="listPreview" style="color:#00a884;">🔒 Secure channel active</div>
+            </div>
+          </div>
+        </div>`;
+        sysPill('🔒 ' + peer.name + ' joined. Secure channel active.');
+      } else if (!peer && peerOn) {
+        peerOn = false; peerInfo = null;
+        document.getElementById('chStatus').textContent = 'last seen recently';
+        document.getElementById('chStatus').className = 'wa-chat-peer-status';
+        document.getElementById('chatInput').disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+        const dot = document.getElementById('listOnlineDot');
+        if (dot) dot.remove();
+        const lp = document.getElementById('listPreview');
+        if (lp) { lp.textContent = '⚠ Peer disconnected'; lp.style.color = '#8696a0'; }
+        sysPill('⚠ Peer left the room.');
+      }
+
+      if (!peer && !peerOn) {
+        chatList.innerHTML = `<div class="wa-waiting-item"><div class="wa-pulse">📡</div><div class="wa-waiting-title">No active chats</div><div>Share the room code below to connect</div></div>`;
+      }
+    }
+
+    function updateListPreview() {
+      const lp = document.getElementById('listPreview');
+      const lt = document.getElementById('listTime');
+      if (lp) { lp.textContent = lastPreview; lp.style.color = '#8696a0'; }
+      if (lt) lt.textContent = lastMsgTime;
+    }
+
+    function showEncInfo() { sysPill('🔒 AES-256-GCM encryption active. Messages can only be read by people in this room.'); }
+
+    async function getKey() {
+      return crypto.subtle.importKey('raw', new TextEncoder().encode(roomCode.padEnd(32, '0').substring(0, 32)), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+
+    async function encrypt(text) {
+      const k = await getKey(), iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(text));
+      return { iv: b2b(iv), ct: b2b(ct) };
+    }
+
+    async function decrypt(ivB64, ctB64) {
+      const k = await getKey(), iv = new Uint8Array(b2buf(ivB64)), ct = b2buf(ctB64);
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, k, ct);
+      return new TextDecoder().decode(pt);
+    }
+
+    async function sendMessage(payload) {
+      if (!peerOn || !payload) return;
+      const env = { senderId: myId, senderName: myName, senderRole: myRole, senderAv: myAv, timestamp: Date.now(), time: nowStr(), ...payload };
+      const textForEnc = env.type === 'text' ? (env.text || '') : JSON.stringify({ type: env.type, text: env.text || '', fileName: env.fileName || '', fileType: env.fileType || '', dataUrl: env.dataUrl || '' });
+      const enc = await encrypt(textForEnc);
+      await msgsRef.push({ senderId: env.senderId, senderName: env.senderName, senderRole: env.senderRole, senderAv: env.senderAv, timestamp: env.timestamp, time: env.time, type: env.type, enc_iv: enc.iv, enc_ct: enc.ct });
+      typRef.remove();
+    }
+
+    async function send() {
+      const inp = document.getElementById('chatInput'), text = inp.value.trim();
+      if (!text || !peerOn) return;
+      inp.value = ''; inp.style.height = 'auto';
+      await sendMessage({ type: 'text', text });
+    }
+
+    function chooseAttachment() { document.getElementById('fileInput').click(); }
+
+    document.getElementById('fileInput').addEventListener('change', async e => {
+      const file = e.target.files?.[0]; if (!file) return;
+      await handleFileAttachment(file); e.target.value = '';
+    });
+
+    async function handleFileAttachment(file) {
+      if (!file || !peerOn) return;
+      try {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const dataUrl = reader.result;
+          let type = 'file';
+          if (file.type.startsWith('image/')) type = 'image';
+          else if (file.type.startsWith('audio/')) type = 'audio';
+          await sendMessage({ type, text: `${type === 'file' ? 'File' : type.charAt(0).toUpperCase() + type.slice(1)}: ${file.name}`, fileName: file.name, fileType: file.type, dataUrl });
+          sysPill('✅ ' + file.name + ' sent');
+        };
+        reader.readAsDataURL(file);
+      } catch (e) { sysPill('Unable to send attachment'); }
+    }
+
+    async function toggleRecording() {
+      if (recording) { stopRecording(); return; }
+      if (!navigator.mediaDevices?.getUserMedia) { sysPill('Microphone not supported.'); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+          await handleFileAttachment(file);
+          stream.getTracks().forEach(t => t.stop());
+          recording = false; document.getElementById('recordBtn').textContent = '🎤';
+        };
+        mediaRecorder.start(); recording = true;
+        document.getElementById('recordBtn').textContent = '⏹';
+        sysPill('🎤 Recording… tap ⏹ to stop');
+      } catch (e) { sysPill('Failed to start recording.'); }
+    }
+
+    function stopRecording() { if (mediaRecorder?.state === 'recording') mediaRecorder.stop(); }
+
+    function renderMsg(msg) {
+      const isMe = msg.senderId === myId;
+      const area = document.getElementById('msgs');
+      const row = document.createElement('div');
+      row.className = 'wa-msg-row ' + (isMe ? 'me' : 'you');
+      let inner = '';
+      const type = msg.type || 'text';
+      if (type === 'image' && msg.dataUrl) inner = `<img class="wa-msg-img" src="${msg.dataUrl}" alt="${esc(msg.fileName || 'Image')}" />`;
+      else if ((type === 'audio' || type === 'voicemail') && msg.dataUrl) inner = `<audio controls class="wa-msg-audio" src="${msg.dataUrl}"></audio>`;
+      else if (type === 'file' && msg.dataUrl) inner = `<a class="wa-msg-file" href="${msg.dataUrl}" download="${esc(msg.fileName || 'file')}">📄 ${esc(msg.fileName || 'Download')}</a>`;
+      else inner = esc(msg.text || '[Attachment]');
+      const ticks = isMe ? `<span class="wa-tick-blue">✓✓</span>` : '';
+      row.innerHTML = `<div class="wa-bubble">${inner}<div class="wa-bubble-meta"><span>${msg.time || nowStr()}</span>${ticks}</div></div>`;
+      area.appendChild(row);
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function sysPill(text) {
+      const area = document.getElementById('msgs');
+      const d = document.createElement('div'); d.className = 'wa-sys-pill'; d.textContent = text;
+      area.appendChild(d); area.scrollTop = area.scrollHeight;
+    }
+
+    function ht() {
+      if (!peerOn) return;
+      typRef.set({ name: myName, ts: Date.now() });
+      clearTimeout(typTimer);
+      typTimer = setTimeout(() => typRef.remove(), 2500);
+    }
+
+    function kd(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
+    function ri(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+    function toggleEmoji() { document.getElementById('emojiTray').classList.toggle('open'); }
+    function ins(em) { document.getElementById('chatInput').value += em; document.getElementById('chatInput').focus(); document.getElementById('emojiTray').classList.remove('open'); }
+
+    function copyRoom() {
+      navigator.clipboard.writeText(roomCode).then(() => {
+        ['copyBtnLeft', 'copyBtnOverlay'].forEach(id => {
+          const b = document.getElementById(id); if (!b) return;
+          const orig = b.textContent; b.textContent = '✓ Copied!';
+          setTimeout(() => b.textContent = orig, 2000);
+        });
+      });
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.wa-emoji-tray') && !e.target.closest('.wa-input-side-btn'))
+        document.getElementById('emojiTray').classList.remove('open');
+    });
+
+    function handleLogout() {
+      presRef?.remove(); typRef?.remove();
+      roomRef?.child('presence').off(); roomRef?.child('messages').off(); roomRef?.child('typing').off();
+      peerOn = false; peerInfo = null; seenKeys.clear(); lastPreview = ''; lastMsgTime = '';
+      document.getElementById('chatApp').style.display = 'none';
+      document.getElementById('chatApp').classList.remove('chat-open');
+      document.getElementById('setupScreen').style.display = 'flex';
+      document.getElementById('chatInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+      document.getElementById('msgs').innerHTML = '<div class="wa-date-line">Today</div><div class="wa-sys-pill">🔒 Room joined. Waiting for the other person to connect…</div>';
+      document.getElementById('waitOverlay').style.display = 'flex';
+      document.getElementById('connectBtn').disabled = false;
+      document.getElementById('connectBtn').innerHTML = 'Connect to Room →';
+      document.getElementById('setupAlert').classList.remove('show');
+      document.getElementById('chAv').style.background = '#2a3942'; document.getElementById('chAv').textContent = '👤';
+      document.getElementById('chName').textContent = 'Waiting for peer…';
+      document.getElementById('chStatus').textContent = 'Share the room code to connect';
+      document.getElementById('chStatus').className = 'wa-chat-peer-status';
+      document.getElementById('waChatList').innerHTML = '<div class="wa-waiting-item"><div class="wa-pulse">📡</div><div class="wa-waiting-title">No active chats</div><div>Share the room code below to connect</div></div>';
+    }
+
+    window.addEventListener('load', genRoom);
+  </script>
+</body>
+
+</html>
